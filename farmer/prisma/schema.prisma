@@ -1,0 +1,117 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String   // For authentication
+  role      UserRole @default(CUSTOMER)
+  phone     String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  products  Product[]
+  orders    Order[]
+  negotiations Negotiation[]
+  receivedOrders Order[] @relation("ReceivedOrders")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  quantity    Int      // Available quantity
+  unit        String   // e.g., "kg", "lbs", "pieces"
+  category    String?
+  image       String?  // URL to product image
+  isAvailable Boolean  @default(true)
+  farmerId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  farmer      User     @relation(fields: [farmerId], references: [id])
+  orderItems  OrderItem[]
+  negotiations Negotiation[]
+}
+
+model Order {
+  id        String      @id @default(cuid())
+  status    OrderStatus @default(PENDING)
+  total     Float
+  notes     String?
+  customerId String
+  farmerId  String
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  // Relations
+  customer  User        @relation(fields: [customerId], references: [id])
+  farmer    User        @relation("ReceivedOrders", fields: [farmerId], references: [id])
+  items     OrderItem[]
+}
+
+model OrderItem {
+  id        String @id @default(cuid())
+  quantity  Int
+  price     Float  // Price at time of purchase
+  orderId   String
+  productId String
+  createdAt DateTime @default(now())
+
+  // Relations
+  order     Order   @relation(fields: [orderId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+model Negotiation {
+  id          String           @id @default(cuid())
+  proposedPrice Float
+  quantity    Int
+  message     String?
+  status      NegotiationStatus @default(PENDING)
+  customerId  String
+  productId   String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  // Relations
+  customer    User             @relation(fields: [customerId], references: [id])
+  product     Product          @relation(fields: [productId], references: [id])
+}
+
+enum UserRole {
+  FARMER
+  CUSTOMER
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COMPLETED
+  CANCELLED
+}
+
+enum NegotiationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COUNTERED
+}
